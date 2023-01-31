@@ -8,7 +8,7 @@ In an effort to achieve a simple solution, I developed Python script InfluxDBlog
 
 An added feature is that the data is only written if the device is online.  Once a device goes offline, data write stop and is easily detected on a dashboard chart.  In addition, device online/offline status is written to InfluxDB enabling creation of [device status dashboards](https://github.com/AllegrettoA/SmartThings-InfluxDB-logger/blob/main/Example%20Device%20Status%20Dashboard.png) like the example in this repository.
 
-<img class="center" src="https://github.com/AllegrettoA/SmartThings-InfluxDB-logger/blob/main/Example%20Device%20Status%20Dashboard.png" width="400">
+<img style="text-align: center" src="https://github.com/AllegrettoA/SmartThings-InfluxDB-logger/blob/main/Example%20Device%20Status%20Dashboard.png" width="400">
 
 Note that the script only writes data for capabilities power, battery, and temperature since those are the only ones that matterd to me.  However, you can copy and paste code to write data for other capabilities.  I recommend adding a line of code print(dev) to examine the json structure for other device capabilities and it will be arrarent how to write its data.
 
