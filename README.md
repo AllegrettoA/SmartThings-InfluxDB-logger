@@ -2,7 +2,7 @@
 Python script to poll SmartThings devices and write data to InfluxDB.
 
 ### Background
-Samsung Smartthings platform upgrade obsoleted Groovy smartapps inclusing one that was easy to use, highly configurable, and effective at logging SmartThings device data to InfluxDB (https://github.com/codersaur/SmartThings).  Search results have not identified equivalent replacements.  And any event-driven design, like in the original Groovy smartapp requires complex web server design beyond my capabilities.
+Samsung Smartthings platform upgrade obsoleted Groovy smartapps inclusing one that was easy to use, highly configurable, and effective at logging SmartThings device data to InfluxDB (https://github.com/codersaur/SmartThings).  Search results have not identified equivalent replacements.  And any event-driven design, like in the original Groovy smartapp requires complex web server design such as such as Amazon LambdaAWS or Node.js which beyond my capabilities and appetite for complexity.
 
 In an effort to achieve a simple solution, I developed Python script InfluxDBlogger.py.  This script has been working well for me on my Raspberry PI 3B and can run on many other platforms.  Since it is not event-driven, it does not provide real-time up data updates.  However, it polls devices similar to the soft-polling in the original Groovy smartapp.
 
