@@ -17,7 +17,7 @@ Personal Access Token.  Since the script runs external to SmartThings, a Persona
 
 InfluxDB Connection.  Configure the InfluxDB connection variables with your username, password, database name, host name or IP address, and port number.
 
-Run Script.  Either use command tool to run Python script or add to your startup file.  For Raspberry PI, you can modify rc.local file with command "sudo nano /etc/rc.local", then add this code to the bottom:
+Run Script.  Either use command tool to run Python script or add to your startup file.  For Raspberry PI, you can modify rc.local file with command '*sudo nano /etc/rc.local*', then add this code to the bottom:
 
     # Run SmartThings InfluxDatalogger Python script
     sleep 30 && python3 /home/pi/shared/SmartThings/InfluxDBlogger.py &
