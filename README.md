@@ -13,11 +13,11 @@ An added feature is that data is only written if the device is **online**.  Once
 Note that the script only writes data for capabilities power, battery, and temperature since those are the only ones that matterd to me.  However, you can copy and paste code to write data for other capabilities.  If you need to add new device capabilities (data), I recommend adding a line of code '*print(dev)*' to examine the json structure for the device and it will be apparent how to log its data.
 
 ### Setup
-Personal Access Token.  Since the script runs external to SmartThings, a Personal Access Token is required.  This access token enables the Python app (or any other app) to have access to your SmartThings devices and eliminates the need for login credentials.  You can generate a Personal Access Token by logging on to your SmartTHings account and navigating to https://account.smartthings.com/tokens.  Add your access token to the AccessToken variable.
+1. **Personal Access Token**.  Since the script runs external to SmartThings, a Personal Access Token is required.  This access token enables the Python app (or any other app) to have access to your SmartThings devices and eliminates the need for login credentials.  You can generate a Personal Access Token by logging on to your SmartTHings account and navigating to https://account.smartthings.com/tokens.  Add your access token to the AccessToken variable.
 
-InfluxDB Connection.  Configure the InfluxDB connection variables with your username, password, database name, host name or IP address, and port number.
+2. **InfluxDB Connection**.  Configure the InfluxDB connection variables with your username, password, database name, host name or IP address, and port number.
 
-Run Script.  Either use command tool to run Python script or add to your startup file.  For Raspberry PI, you can modify rc.local file with command '*sudo nano /etc/rc.local*', then add this code to the bottom:
+3. **Run Script**.  Either use command tool to run Python script or add to your startup file.  For Raspberry PI, you can modify rc.local file with command '*sudo nano /etc/rc.local*', then add this code to the bottom:
 
     # Run SmartThings InfluxDatalogger Python script
     sleep 30 && python3 /home/pi/shared/SmartThings/InfluxDBlogger.py &
