@@ -3,9 +3,15 @@
 #Requires SmartThings Personal Access Token
 #Writes data only if device health state in ONLINE
 #Author:    Allen Allegretto
-#Version:   1.0 (2023-01-27)
-#Revisions:
-#           1.1 (2020-01-29) Added device health, added polling data
+#Version:   1.0 (2023-01-27) Original
+#           1.1 (2023-01-29) Added device health and polling stats data
+#           1.2 (2023-02-15) Added logging for debugging
+#           1.3 (2023-02-26) Batch mode using REST API version 20170916
+#                            - Used by SDK, capable of batch query
+#                            - Ref: https://community.smartthings.com/t/api-check-all-devices-health-in-batch/251420/5
+#                            Added request timeout
+#                            Removed logging
+
 
 #Configuration:
 #1. Provide SmartThings Personal Access Token
@@ -57,74 +63,117 @@ def LogInfluxData(myMeasurement, myDatetime, myUnit, myDeviceId, myLabel, myLoca
         ]
         #write data
         ifclient.write_points(body)
-        print (myLabel, ': ', myMeasurement, '  ', myValue, myUnit, '  ', myDatetime,)
+        #print (myLabel, ': ', myMeasurement, '  ', myValue, myUnit, '  ', myDatetime,)
         
     except:
         pass
     
 
+#Logs poll data point to InfluxDB
+def LogInfluxPollData(myMeasurement, myDatetime, myUnit, myLabel, myValueRequest, myValueProcess, onlineCount, offlineCount, offlineDevices):
+    try:
+        # DB format the data as a single measurement for influx
+        body = [
+            {
+                "measurement": myMeasurement,
+                "time": myDatetime,
+                "tags": {
+                    "unit":  myUnit,
+                    "deviceName": myLabel
+                },
+                "fields": {
+                    "requestSeconds": myValueRequest,
+                    "processSeconds": myValueProcess,
+                    "onlineCount": onlineCount,
+                    "offlineCount": offlineCount,
+                    "offlineDevices": offlineDevices
+                }
+            }
+        ]
+        #write data
+        ifclient.write_points(body)
+        #print (myLabel, ': ', myMeasurement, '  ', myValueRequest, myValueProcess, myUnit, '  ', onlineCount, offlineCount, offlineDevices)
+        
+    except:
+        pass
+
+
+
 
 #Main procedure to quesry each device and log data
 def UpdateSmartThingsData():
+    # ts stores the time in seconds
+    ts1 = datetime.datetime.utcnow()
+    listOffline = []
+    onlineCount = 0
+    offlineCount = 0
     
     #connect to influx
     global ifclient
     ifclient = InfluxDBClient(ifhost,ifport,ifuser,ifpass,ifdb)
 
     # URL and Authourzation token from SmartThings
-    url = 'https://api.smartthings.com/v1/devices'
+    url = 'https://api.smartthings.com/devices?includeStatus=true&includeHealth=true'
     headers = {
         'Authorization': 'Bearer ' + AccessToken,
+        'Accept': 'application/vnd.smartthings+json;v=20170916',
         'cache-control': 'no-cache'
         }
 
     # Get Devices and search each device for select capabilities
-    jsonDevices = requests.get(url, headers=headers).json()
+    jsonDevices = requests.get(url, headers=headers, timeout=10).json()
+    ts2 = datetime.datetime.utcnow()
+    
+    # Process each device with desired capabilities
     for dev in jsonDevices['items']:
         #convert dict of capabilities to string for to easy check if contains specific capability
-        strCapabilities = str( dev['components'][0]['capabilities'])
+        strCapabilities = str( dev['components'][0]['capabilities'] )
         
         #Log specific capabilities
         if ('powerMeter' in strCapabilities) \
         or ('battery' in strCapabilities) \
         or ('temperatureMeasurement' in strCapabilities):
-            time = datetime.datetime.utcnow()    #2023-01-24 18:41:44.584187
             
-            #query device health to check if ONLINE of OFFLINE
-            deviceId = dev['deviceId']
-            jsonHealth = requests.get(url + '/' + deviceId + '/health', headers=headers).json()
-            LogInfluxData('SmartthingsHealth', time, 'status', deviceId, dev['label'], dev['locationId'], jsonHealth['state'])
-            
+            #Log status ONLINE of OFFLINE
+            time = datetime.datetime.utcnow()
+            LogInfluxData('SmartthingsHealth', time, 'status', dev['deviceId'], dev['label'], dev['locationId'], dev['healthState']['state'])
+        
             #write influx data if device ONLINE
-            if (jsonHealth['state'] == 'ONLINE'):
-                
-                #query device status data
-                jsondata = requests.get(url + '/' + deviceId + '/status', headers=headers).json()
+            if (dev['healthState']['state'] == 'ONLINE'):
+                onlineCount += 1
 
-                #log capability data
-                if ('powerMeter' in strCapabilities):
-                    myValue = jsondata['components']['main']['powerMeter']['power']['value']
-                    myUnit = jsondata['components']['main']['powerMeter']['power']['unit']
-                    LogInfluxData('power', time, myUnit, deviceId, dev['label'], dev['locationId'], myValue)
+                #log each capability
+                for cap in dev['components'][0]['capabilities']:
+                    if (cap['id'] == 'powerMeter'):
+                        myValue = cap['status']['power']['value']
+                        myUnit = cap['status']['power']['unit']
+                        LogInfluxData('power', time, myUnit, dev['deviceId'], dev['label'], dev['locationId'], myValue)
+                        
+                    if (cap['id'] == 'battery'):
+                        myValue = cap['status']['battery']['value']
+                        myUnit = cap['status']['battery']['unit']
+                        LogInfluxData('battery', time, myUnit, dev['deviceId'], dev['label'], dev['locationId'], myValue)
+                        
+                    if (cap['id'] == 'temperatureMeasurement'):
+                        myValue = cap['status']['temperature']['value']
+                        myUnit = cap['status']['temperature']['unit']
+                        LogInfluxData('temperature', time, myUnit, dev['deviceId'], dev['label'], dev['locationId'], myValue)
 
-                if ('battery' in strCapabilities):
-                    myValue = jsondata['components']['main']['battery']['battery']['value']
-                    myUnit = jsondata['components']['main']['battery']['battery']['unit']
-                    LogInfluxData('battery', time, myUnit, deviceId, dev['label'], dev['locationId'], myValue)
-
-                if ('temperatureMeasurement' in strCapabilities):
-                    myValue = jsondata['components']['main']['temperatureMeasurement']['temperature']['value']
-                    myUnit = jsondata['components']['main']['temperatureMeasurement']['temperature']['unit']
-                    LogInfluxData('temperature', time, myUnit, deviceId, dev['label'], dev['locationId'], myValue)
-                    
             else:
-                pass
+                offlineCount += 1
+                listOffline.append(dev['label'])
 
+
+
+    # ts stores the time in seconds
+    ts3 = datetime.datetime.utcnow()
+
+    #Log poll stats
+    LogInfluxPollData('SmartthingsPoll', ts3, 'seconds', 'PythonScript', (ts2 - ts1).total_seconds(), (ts3 - ts2).total_seconds(), onlineCount, offlineCount, ', '.join(i for i in listOffline))
+    
     #close influx
     ifclient.close()
 
-    print ('Completed ', datetime.datetime.utcnow(), '  Process time: ', ts2 - ts1)
-    print ('Waiting...')
 
 
 #Update data every 5 minutes
@@ -132,6 +181,7 @@ while True:
     try:
         UpdateSmartThingsData()
     except:
+        #print(sys.exc_info()[1])
         pass
     sleep(60 * PollIntervalMinutes)
 
